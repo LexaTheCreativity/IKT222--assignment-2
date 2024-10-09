@@ -1,7 +1,9 @@
+import sqlite3
 from flask_login import current_user, login_user, logout_user, login_required, UserMixin, LoginManager
 from flask import Flask, render_template, redirect, url_for, request, session, flash, g
 from database import connect_db
-from werkzeug.security import generate_password_hash, check_password_hash
+# from flask_scrypt import generate_password_hash, check_password_hash, generate_random_salt
+# from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for session management
@@ -48,48 +50,59 @@ def home():
 
     return render_template('home.html', posts=posts)
 
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form.get('email')
-        username = request.form.get('username')
-        password = request.form.get('password')
-        hashed_password = generate_password_hash(password, method='sha256')
+        username = request.form['username']
+        password = request.form['password']
+        # salt = generate_random_salt()
+        # hashed_password = generate_password_hash(password)
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (email, username, password) VALUES (?, ?)", (email, username, hashed_password))
-        conn.commit()
-
-        return redirect(url_for('login'))
-    return render_template('register.html', title='Register')
+        try:
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+            conn.commit()
+            flash('Registration successful! You can now log in.', category='success')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Username already exists. Please choose a different one.', category='error')
+        except Exception as e:
+            flash(f'An error occurred: {e}', category='error')
+    else:
+        return render_template('register.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-
+        username = request.form['username']
+        password = request.form['password']
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE (email, password) = (?,?)", (email, password))
-        user = cursor.fetchone()
 
-        if user and check_password_hash(user[2], password):
-            user_obj = user(id=user[0], username=user[1], password=user[2])
-            login_user(user_obj)  # Logs the user in
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user and user[2] == password:
+            session['user_id'] = user[0]
+            flash('Login successful!', category='success')
             return redirect(url_for('home'))
         else:
             flash('Invalid username or password', category='error')
-            return "Invalid credentials"
+            return redirect(url_for('login'))
+    else:
+        return render_template('login.html')
 
-    return render_template('login.html', title='Login')
 
-
+@app.route("/logout")
 @login_required
 def logout():
-    session.pop('user_id', None)
+    session.clear()
+    logout_user()
+    flash("You were logged out. See you soon!")
     return redirect(url_for('home.html'))
 
 
@@ -97,23 +110,31 @@ def logout():
 @login_required
 def add_post():
     if 'user_id' not in session:
+        flash('You need to be logged in to add a post.', category='error')
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        title = request.form.get('title')
-        content = request.form.get('content')
-        try:
-            conn = connect_db()
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)",
-                           (title, content, current_user.id))
-            conn.commit()
+        title = request.form['title']
+        content = request.form['content']
 
-            return redirect(url_for('home'))
+        if current_user.is_authenticated:
+            try:
+                conn = connect_db()
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)",
+                               (title, content, session['user_id']))
+                conn.commit()
 
-        except Exception as e:
-            print(f"error while adding post: {e}")
-            flash('An error occurred while adding your post. Please try again.')
+                flash('Post added successfully!', category='success')
+                return redirect(url_for('home'))
+
+            except Exception as e:
+                print(f"error while adding post: {e}")
+                flash('An error occurred while adding your post. Please try again.')
+        else:
+            flash('You must login to add posts')
+    else:
+        flash('You must login to add posts')
 
     return render_template('add_post.html')
 

@@ -9,13 +9,13 @@
 
     <form method="POST" action="{{ url_for('login') }}">
         <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="text" class="form-control" id="email" name="email" placeholder="Email address" required>
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
         </div>
 
         <div class="mb-3">
             <label for="password" class="form-label">Password</label>
-            <input type="text" class="form-control" id="password" name="password1" placeholder="Password" required>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
         </div>
         <br/>
 
@@ -27,6 +27,16 @@
         <p class="mt-3">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
 
     </form>
+
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
 
 
 {% endblock %}
