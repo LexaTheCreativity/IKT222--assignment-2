@@ -68,6 +68,7 @@ def register():
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
             flash('Username already exists. Please choose a different one.', category='error')
+            return redirect(url_for('register'))
         except Exception as e:
             flash(f'An error occurred: {e}', category='error')
     else:
@@ -77,8 +78,8 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username')
+        password = request.form.get('password')
         conn = connect_db()
         cursor = conn.cursor()
 
@@ -86,7 +87,10 @@ def login():
         user = cursor.fetchone()
         conn.close()
 
+        user_obj = User(id=user[0], username=user[1], password=user[2])
+
         if user and user[2] == password:
+            login_user(user_obj)
             session['user_id'] = user[0]
             flash('Login successful!', category='success')
             return redirect(url_for('home'))
@@ -100,14 +104,16 @@ def login():
 @app.route("/logout")
 @login_required
 def logout():
-    session.clear()
-    logout_user()
-    flash("You were logged out. See you soon!")
-    return redirect(url_for('home.html'))
+    if session['user_id']:
+        logout_user()
+        session.clear()
+        flash("You were logged out. See you soon!")
+        return redirect(url_for('home'))
+    else:
+        flash('Somwthing went wrong!', category='error')
 
 
 @app.route('/add_post', methods=['GET', 'POST'])
-@login_required
 def add_post():
     if 'user_id' not in session:
         flash('You need to be logged in to add a post.', category='error')
@@ -117,7 +123,7 @@ def add_post():
         title = request.form['title']
         content = request.form['content']
 
-        if current_user.is_authenticated:
+        if session['user_id'] != None:
             try:
                 conn = connect_db()
                 cursor = conn.cursor()

@@ -15,11 +15,8 @@
         <a class="navbar-brand" href="/">Guardians of the Firewall</a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav mr-auto">
-                {% if 'user_id' in session %}
+                {% if session['user_id'] %}
                     <!-- If user is logged in, show username and logout -->
-                    <li class="nav-item">
-                        <span class="navbar-text">Hello, {{ session['user_id'] }}</span>
-                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
                     </li>
