@@ -114,6 +114,7 @@ def logout():
 
 
 @app.route('/add_post', methods=['GET', 'POST'])
+@login_required
 def add_post():
     if 'user_id' not in session:
         flash('You need to be logged in to add a post.', category='error')
