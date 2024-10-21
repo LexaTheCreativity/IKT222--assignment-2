@@ -2,6 +2,7 @@ import sqlite3
 from flask_login import current_user, login_user, logout_user, login_required, UserMixin, LoginManager
 from flask import Flask, render_template, redirect, url_for, request, session, flash, g
 from database import connect_db
+from markupsafe import escape
 # from flask_scrypt import generate_password_hash, check_password_hash, generate_random_salt
 # from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -78,8 +79,8 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = escape(request.form.get('username'))  # Escape the username input
+        password = escape(request.form.get('password'))  # Escape the password input
         conn = connect_db()
         cursor = conn.cursor()
 
@@ -87,9 +88,8 @@ def login():
         user = cursor.fetchone()
         conn.close()
 
-        user_obj = User(id=user[0], username=user[1], password=user[2])
-
         if user and user[2] == password:
+            user_obj = User(id=user[0], username=user[1], password=user[2])
             login_user(user_obj)
             session['user_id'] = user[0]
             flash('Login successful!', category='success')
@@ -99,6 +99,7 @@ def login():
             return redirect(url_for('login'))
     else:
         return render_template('login.html')
+
 
 
 @app.route("/logout")
@@ -121,13 +122,15 @@ def add_post():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        title = request.form['title']
-        content = request.form['content']
+        # Sanitize the title and content input from the user
+        title = escape(request.form['title'])
+        content = escape(request.form['content'])
 
         if session['user_id'] != None:
             try:
                 conn = connect_db()
                 cursor = conn.cursor()
+                # Store the sanitized inputs in the database
                 cursor.execute("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)",
                                (title, content, session['user_id']))
                 conn.commit()
@@ -145,6 +148,10 @@ def add_post():
 
     return render_template('add_post.html')
 
+@app.after_request
+def set_csp(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'",
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True)
