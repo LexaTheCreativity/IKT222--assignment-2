@@ -13,7 +13,7 @@
       {% for post in posts %}
        <div class="list-group-item m-2" >
         <h5 class="mb-1">{{ post[0] }}</h5>  <!-- Title -->
-        <p class="mb-1">{{ post[1] }}</p>     <!-- Content -->
+        <p class="mb-1">{{ post[1]|safe }}</p>  <!-- Content rendered as html -->
         <small>Posted by {{ post[2] }}</small> <!-- Username -->
       </div>
       {% else %}
