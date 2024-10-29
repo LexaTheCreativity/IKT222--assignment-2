@@ -2,6 +2,9 @@ import sqlite3
 from flask_login import current_user, login_user, logout_user, login_required, UserMixin, LoginManager
 from flask import Flask, render_template, redirect, url_for, request, session, flash, g
 from database import connect_db
+import hashlib
+import os
+import datetime
 # from flask_scrypt import generate_password_hash, check_password_hash, generate_random_salt
 # from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -50,14 +53,22 @@ def home():
 
     return render_template('home.html', posts=posts)
 
+def hash_password(password):
+    # Generate a random salt
+    salt = os.urandom(16)
+    # Hash the password with the salt
+    hashed_password = hashlib.sha256(salt + password.encode()).hexdigest()
+    # Return a string combining the salt and hashed password with a delimiter
+    return salt.hex() + ":" + hashed_password
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # salt = generate_random_salt()
-        # hashed_password = generate_password_hash(password)
+
+        # Generate hashed password with salt
+        hashed_password = hash_password(password)
 
         conn = connect_db()
         cursor = conn.cursor()
@@ -75,11 +86,65 @@ def register():
         return render_template('register.html')
 
 
+
+def verify_password(stored_password, provided_password):
+    # Check that stored_password contains a colon
+    if ':' not in stored_password:
+        raise ValueError("Stored password format is invalid, missing salt delimiter ':'.")
+
+    try:
+        # Split stored_password into salt and hash
+        salt_hex, stored_hash = stored_password.split(":")
+    except ValueError:
+        raise ValueError("Stored password format is invalid.")
+
+    # Convert the hex salt back to bytes
+    try:
+        salt = bytes.fromhex(salt_hex)
+    except ValueError as e:
+        raise ValueError("Salt is not in hex format.") from e
+
+    # Hash the provided password with the extracted salt
+    provided_hash = hashlib.sha256(salt + provided_password.encode()).hexdigest()
+
+    # Compare the hashes
+    return provided_hash == stored_hash
+
+
+def too_many_attempts(username):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    # Count failed attempts within the last 5 minutes
+    cursor.execute('''
+        SELECT COUNT(*) FROM login_attempts
+        WHERE username = ? AND attempt_time >= datetime('now', '-5 minutes')
+    ''', (username,))
+    attempt_count = cursor.fetchone()[0]
+    conn.close()
+
+    # Return True if there are 3 or more attempts in the last 5 minutes
+    return attempt_count >= 2
+
+
+def record_failed_attempt(username):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO login_attempts (username) VALUES (?)", (username,))
+    conn.commit()
+    conn.close()
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+
+        # Check if the user has too many failed login attempts
+        if too_many_attempts(username):
+            flash("Too many failed attempts. Please try again after 5 minutes.", category='error')
+            return redirect(url_for('login'))
+
         conn = connect_db()
         cursor = conn.cursor()
 
@@ -87,14 +152,29 @@ def login():
         user = cursor.fetchone()
         conn.close()
 
-        user_obj = User(id=user[0], username=user[1], password=user[2])
+        # Check if user exists and print the retrieved password for debugging
+        if user is not None:
+            stored_password = user[2]  # Get the stored hashed password
+            if verify_password(stored_password, password):
+                # Clear any failed attempts upon successful login
+                conn = connect_db()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM login_attempts WHERE username = ?", (username,))
+                conn.commit()
+                conn.close()
 
-        if user and user[2] == password:
-            login_user(user_obj)
-            session['user_id'] = user[0]
-            flash('Login successful!', category='success')
-            return redirect(url_for('home'))
+                # Create a user object if the password is correct
+                user_obj = User(id=user[0], username=user[1], password=user[2])
+                login_user(user_obj)
+                session['user_id'] = user[0]
+                flash('Login successful!', category='success')
+                return redirect(url_for('home'))
+            else:
+                record_failed_attempt(username)
+                flash('Invalid username or password', category='error')
+                return redirect(url_for('login'))
         else:
+            record_failed_attempt(username)
             flash('Invalid username or password', category='error')
             return redirect(url_for('login'))
     else:
@@ -144,7 +224,6 @@ def add_post():
         flash('You must login to add posts')
 
     return render_template('add_post.html')
-
 
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ def create_tables():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE
+            username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL
         )
     ''')
@@ -22,6 +22,13 @@ def create_tables():
             content TEXT NOT NULL,
             user_id INTEGER,
             FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
