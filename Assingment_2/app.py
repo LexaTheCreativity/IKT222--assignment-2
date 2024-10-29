@@ -2,6 +2,8 @@ import sqlite3
 from flask_login import current_user, login_user, logout_user, login_required, UserMixin, LoginManager
 from flask import Flask, render_template, redirect, url_for, request, session, flash, g
 from database import connect_db
+import hashlib
+import os
 # from flask_scrypt import generate_password_hash, check_password_hash, generate_random_salt
 # from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -50,19 +52,25 @@ def home():
 
     return render_template('home.html', posts=posts)
 
+def hash_password(password): # Hash password with salt
+    salt = os.urandom(16)
+    hashed_password = hashlib.sha256(salt + password.encode()).hexdigest()
+    return salt.hex() + hashed_password
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # salt = generate_random_salt()
-        # hashed_password = generate_password_hash(password)
+
+        # Hash the password
+        hashed_password = hash_password(password)
 
         conn = connect_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
             conn.commit()
             flash('Registration successful! You can now log in.', category='success')
             return redirect(url_for('login'))
@@ -74,26 +82,40 @@ def register():
     else:
         return render_template('register.html')
 
+def verify_password(stored_password, provided_password):
+    salt = bytes.fromhex(stored_password[:32])
+    stored_hash = stored_password[32:]
+    provided_hash = hashlib.sha256(salt + provided_password.encode()).hexdigest()
+    return provided_hash == stored_hash
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        # Fetches the user by username only
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
         conn.close()
 
-        user_obj = User(id=user[0], username=user[1], password=user[2])
-
-        if user and user[2] == password:
-            login_user(user_obj)
-            session['user_id'] = user[0]
-            flash('Login successful!', category='success')
-            return redirect(url_for('home'))
+        # Checks if user exists and verify the password
+        if user is not None:
+            stored_password = user[2]  # Get the stored hashed password
+            if verify_password(stored_password, password):
+                # Creates a user object if the password is correct
+                user_obj = User(id=user[0], username=user[1], password=user[2])
+                login_user(user_obj)
+                session['user_id'] = user[0]
+                flash('Login successful!', category='success')
+                return redirect(url_for('home'))
+            else:
+                flash('Invalid username or password', category='error')
+                return redirect(url_for('login'))
         else:
             flash('Invalid username or password', category='error')
             return redirect(url_for('login'))
