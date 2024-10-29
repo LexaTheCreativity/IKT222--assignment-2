@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="9913a9de-8f59-4bdc-a306-72797cb09fce" name="Changes" comment="implemented hashing and decrypting on password using hashlib">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/9d3262de-0802-4c20-b140-1313a7b5877f.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/9d3262de-0802-4c20-b140-1313a7b5877f.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assingment_2/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/Assingment_2/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assingment_2/blog.db" beforeDir="false" afterPath="$PROJECT_DIR$/Assingment_2/blog.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assingment_2/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/Assingment_2/database.py" afterDir="false" />
-    </list>
+    <list default="true" id="9913a9de-8f59-4bdc-a306-72797cb09fce" name="Changes" comment="Protection against brute force attacks on" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -54,22 +48,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.app.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "thomas__assignment__3",
-    "last_opened_file_path": "C:/Users/thoma/IKT222--assignment-2",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.app.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;thomas__assignment__3&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/thoma/IKT222--assignment-2&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="IKT222--assignment-2" />
@@ -233,7 +227,14 @@
       <option name="presentableId" value="LOCAL−00002" />
       <updated>1730195522006</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL−00003" summary="Protection against brute force attacks on">
+      <option name="closed" value="true" />
+      <created>1730205212052</created>
+      <option name="number" value="LOCAL−00003" />
+      <option name="presentableId" value="LOCAL−00003" />
+      <updated>1730205212052</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -242,9 +243,10 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="implemented mitigation methods for xss attacks" />
     <MESSAGE value="implemented hashing and decrypting on password using hashlib" />
-    <option name="LAST_COMMIT_MESSAGE" value="implemented hashing and decrypting on password using hashlib" />
+    <MESSAGE value="Protection against brute force attacks on" />
+    <option name="LAST_COMMIT_MESSAGE" value="Protection against brute force attacks on" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/IKT222__assignment_2$app.coverage" NAME="app Coverage Results" MODIFIED="1730203955649" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Assingment_2" />
+    <SUITE FILE_PATH="coverage/IKT222__assignment_2$app.coverage" NAME="app Coverage Results" MODIFIED="1730204932658" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Assingment_2" />
   </component>
 </project>
