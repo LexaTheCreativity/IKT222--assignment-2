@@ -12,7 +12,23 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL  -- Increase size if needed for hash and salt
+            password TEXT NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            user_id INTEGER,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()

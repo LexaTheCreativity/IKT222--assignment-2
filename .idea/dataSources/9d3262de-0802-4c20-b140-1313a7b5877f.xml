@@ -499,7 +499,7 @@
     </routine>
     <schema id="191" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2024-10-29.09:41:09</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2024-10-29.10:55:02</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="192" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1590,93 +1590,113 @@
     <argument id="554" parent="190">
       <Position>1</Position>
     </argument>
-    <table id="555" parent="191" name="posts"/>
-    <table id="556" parent="191" name="sqlite_master">
+    <table id="555" parent="191" name="login_attempts"/>
+    <table id="556" parent="191" name="posts"/>
+    <table id="557" parent="191" name="sqlite_master">
       <System>1</System>
     </table>
-    <table id="557" parent="191" name="sqlite_sequence">
+    <table id="558" parent="191" name="sqlite_sequence">
       <System>1</System>
     </table>
-    <table id="558" parent="191" name="users"/>
-    <column id="559" parent="555" name="id">
+    <table id="559" parent="191" name="users"/>
+    <column id="560" parent="555" name="id">
       <AutoIncrement>1</AutoIncrement>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="560" parent="555" name="title">
+    <column id="561" parent="555" name="username">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="561" parent="555" name="content">
+    <column id="562" parent="555" name="attempt_time">
+      <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
+      <Position>3</Position>
+      <StoredType>TIMESTAMP|0s</StoredType>
+    </column>
+    <key id="563" parent="555">
+      <ColNames>id</ColNames>
+      <Primary>1</Primary>
+    </key>
+    <column id="564" parent="556" name="id">
+      <AutoIncrement>1</AutoIncrement>
+      <Position>1</Position>
+      <StoredType>INTEGER|0s</StoredType>
+    </column>
+    <column id="565" parent="556" name="title">
+      <NotNull>1</NotNull>
+      <Position>2</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <column id="566" parent="556" name="content">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="562" parent="555" name="user_id">
+    <column id="567" parent="556" name="user_id">
       <Position>4</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <foreign-key id="563" parent="555">
+    <foreign-key id="568" parent="556">
       <ColNames>user_id</ColNames>
       <RefColNames>id</RefColNames>
       <RefTableName>users</RefTableName>
     </foreign-key>
-    <key id="564" parent="555">
+    <key id="569" parent="556">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <column id="565" parent="556" name="type">
+    <column id="570" parent="557" name="type">
       <Position>1</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="566" parent="556" name="name">
+    <column id="571" parent="557" name="name">
       <Position>2</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="567" parent="556" name="tbl_name">
+    <column id="572" parent="557" name="tbl_name">
       <Position>3</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="568" parent="556" name="rootpage">
+    <column id="573" parent="557" name="rootpage">
       <Position>4</Position>
       <StoredType>INT|0s</StoredType>
     </column>
-    <column id="569" parent="556" name="sql">
+    <column id="574" parent="557" name="sql">
       <Position>5</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="570" parent="557" name="name">
+    <column id="575" parent="558" name="name">
       <Position>1</Position>
     </column>
-    <column id="571" parent="557" name="seq">
+    <column id="576" parent="558" name="seq">
       <Position>2</Position>
     </column>
-    <column id="572" parent="558" name="id">
+    <column id="577" parent="559" name="id">
       <AutoIncrement>1</AutoIncrement>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="573" parent="558" name="username">
+    <column id="578" parent="559" name="username">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="574" parent="558" name="password">
+    <column id="579" parent="559" name="password">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <index id="575" parent="558" name="sqlite_autoindex_users_1">
+    <index id="580" parent="559" name="sqlite_autoindex_users_1">
       <ColNames>username</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="576" parent="558">
+    <key id="581" parent="559">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="577" parent="558">
+    <key id="582" parent="559">
       <ColNames>username</ColNames>
       <UnderlyingIndexName>sqlite_autoindex_users_1</UnderlyingIndexName>
     </key>
