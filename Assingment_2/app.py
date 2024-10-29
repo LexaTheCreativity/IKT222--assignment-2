@@ -69,11 +69,12 @@ def register():
 
         # Generate hashed password with salt
         hashed_password = hash_password(password)
+        print(f"Hashed password being stored: {hashed_password}")  # Debugging outpu
 
         conn = connect_db()
         cursor = conn.cursor()
         try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
             conn.commit()
             flash('Registration successful! You can now log in.', category='success')
             return redirect(url_for('login'))
@@ -92,17 +93,11 @@ def verify_password(stored_password, provided_password):
     if ':' not in stored_password:
         raise ValueError("Stored password format is invalid, missing salt delimiter ':'.")
 
-    try:
-        # Split stored_password into salt and hash
-        salt_hex, stored_hash = stored_password.split(":")
-    except ValueError:
-        raise ValueError("Stored password format is invalid.")
+    # Split stored_password into salt and hash
+    salt_hex, stored_hash = stored_password.split(":")
 
     # Convert the hex salt back to bytes
-    try:
-        salt = bytes.fromhex(salt_hex)
-    except ValueError as e:
-        raise ValueError("Salt is not in hex format.") from e
+    salt = bytes.fromhex(salt_hex)
 
     # Hash the provided password with the extracted salt
     provided_hash = hashlib.sha256(salt + provided_password.encode()).hexdigest()
@@ -124,7 +119,7 @@ def too_many_attempts(username):
     conn.close()
 
     # Return True if there are 3 or more attempts in the last 5 minutes
-    return attempt_count >= 2
+    return attempt_count >= 3
 
 
 def record_failed_attempt(username):
@@ -148,7 +143,7 @@ def login():
         conn = connect_db()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
         conn.close()
 
