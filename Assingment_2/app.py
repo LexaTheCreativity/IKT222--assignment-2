@@ -1,9 +1,13 @@
 import sqlite3
+
+import limiter
 from flask_login import current_user, login_user, logout_user, login_required, UserMixin, LoginManager
 from flask import Flask, render_template, redirect, url_for, request, session, flash, g
 from database import connect_db
 import hashlib
 import os
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import datetime
 # from flask_scrypt import generate_password_hash, check_password_hash, generate_random_salt
 # from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,6 +20,13 @@ DATABASE = 'database.db'
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["2 per minute", "1 per second"],
+    storage_uri="memory://",
+    strategy="fixed-window", # or "moving-window"
+)
 
 class User(UserMixin):
     def __init__(self, id, username, password):
@@ -40,6 +51,7 @@ def load_user(user_id):
 
 
 @app.route('/')
+@limiter.limit("10 per minute")  # Adjust the rate limit as needed
 def home():
     conn = connect_db()
     cursor = conn.cursor()
@@ -62,6 +74,7 @@ def hash_password(password):
     return salt.hex() + ":" + hashed_password
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")  # Adjust the rate limit as needed
 def register():
     if request.method == 'POST':
         username = request.form['username']
@@ -130,6 +143,7 @@ def record_failed_attempt(username):
     conn.close()
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")  # Adjust the rate limit as needed
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -177,6 +191,7 @@ def login():
 
 
 @app.route("/logout")
+@limiter.limit("10 per minute")  # Adjust the rate limit as needed
 @login_required
 def logout():
     if session['user_id']:
@@ -189,6 +204,7 @@ def logout():
 
 
 @app.route('/add_post', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")  # Adjust the rate limit as needed
 @login_required
 def add_post():
     if 'user_id' not in session:
