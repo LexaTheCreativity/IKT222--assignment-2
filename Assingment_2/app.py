@@ -1,16 +1,21 @@
 import sqlite3
-
-import limiter
+# import limiter
 from flask_login import current_user, login_user, logout_user, login_required, UserMixin, LoginManager
 from flask import Flask, render_template, redirect, url_for, request, session, flash, g
+from unicodedata import category
 from database import connect_db
 import hashlib
 import os
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import pyotp
+import qrcode
+from io import BytesIO
+from base64 import b64encode
+import base64
+import time
 import datetime
-# from flask_scrypt import generate_password_hash, check_password_hash, generate_random_salt
-# from werkzeug.security import generate_password_hash, check_password_hash
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for session management
@@ -29,10 +34,11 @@ limiter = Limiter(
 )
 
 class User(UserMixin):
-    def __init__(self, id, username, password):
+    def __init__(self, id, username, password, totp_secret):
         self.id = id
         self.username = username
         self.password = password
+        self.totp_secret = totp_secret
 
 
 @login_manager.user_loader
@@ -46,7 +52,7 @@ def load_user(user_id):
 
     if user:
         # Return the user object with the retrieved data
-        return User(id=user[0], username=user[1], password=user[2])
+        return User(id=user[0], username=user[1], password=user[2], totp_secret=user[3])
     return None
 
 
@@ -82,22 +88,32 @@ def register():
 
         # Generate hashed password with salt
         hashed_password = hash_password(password)
-        print(f"Hashed password being stored: {hashed_password}")  # Debugging outpu
+        print(f"Hashed password being stored: {hashed_password}")  # Debugging output
 
         conn = connect_db()
         cursor = conn.cursor()
-        try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
-            conn.commit()
-            flash('Registration successful! You can now log in.', category='success')
-            return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
-            flash('Username already exists. Please choose a different one.', category='error')
+
+        # Check if the username already exists in the database
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+
+        if user != None:
+            flash('Username already exists. Please choose a different one.', category='danger')
             return redirect(url_for('register'))
-        except Exception as e:
-            flash(f'An error occurred: {e}', category='error')
+        else:
+            try:
+                cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
+                conn.commit()
+                flash("You are registered. You have to enable 2-Factor Authentication first to login.", category="success")
+
+                return redirect(url_for('setup2fa', username=username))
+
+            except Exception as e:
+                flash(f'An error occurred: {e}', category='danger')
+                return render_template('register.html')
     else:
         return render_template('register.html')
+
 
 
 
@@ -142,6 +158,76 @@ def record_failed_attempt(username):
     conn.commit()
     conn.close()
 
+
+@app.route('/setup2fa/<username>', methods=['GET', 'POST'])
+def setup2fa(username):
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = cursor.fetchone()
+
+    if user is not None:
+        secret = pyotp.random_base32()
+
+        cursor.execute("UPDATE users SET totp_secret = ? WHERE username = ?", (secret,username))
+        conn.commit()
+
+        # Generate TOTP provisioning URI
+        uri = pyotp.totp.TOTP(secret).provisioning_uri(
+            name=username, issuer_name="Secret app")
+
+        # Generate the QR code image
+        qr_image = qrcode.make(uri)
+        buffered = BytesIO()
+        qr_image.save(buffered, format="PNG")
+        qr_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+        # print(f"QR Base64 data: {qr_base64[:50]}...")  # Print a snippet of the data
+
+        return render_template('setup2fa.html', username=username, qr_base64=qr_base64)
+    else:
+        flash('User not found.', category='danger')
+        return redirect(url_for('register'))
+
+
+@app.route('/verify2fa/<username>', methods=['GET', 'POST'])
+def verify2fa(username):
+    if request.method == 'POST':
+        otp_input = request.form['otp_input']
+
+        print(otp_input)
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        print(user)
+
+        try:
+            if user is not None:
+                #cursor.execute("UPDATE users SET totp_secret = ? WHERE username = ?", (username,))
+                #conn.commit()
+
+                totp_secret = user[3]
+
+                totp = pyotp.TOTP(totp_secret)
+
+                if totp.verify(otp_input):
+                    flash("2FA verification successful", category="success")
+                    return redirect(url_for('home'))
+                else:
+                    flash("Invalid 2FA OTP, please try again.", category="danger")
+                    return redirect(url_for('verify2fa', username=username))
+            else:
+                flash('User not found.', category='danger')
+                return redirect(url_for('register'))
+        finally:
+            conn.close()
+    else:
+        return render_template("verify2fa.html", username=username)
+
+
+
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")  # Adjust the rate limit as needed
 def login():
@@ -151,7 +237,7 @@ def login():
 
         # Check if the user has too many failed login attempts
         if too_many_attempts(username):
-            flash("Too many failed attempts. Please try again after 5 minutes.", category='error')
+            flash("Too many failed attempts. Please try again after 5 minutes.", category='danger')
             return redirect(url_for('login'))
 
         conn = connect_db()
@@ -173,18 +259,19 @@ def login():
                 conn.close()
 
                 # Create a user object if the password is correct
-                user_obj = User(id=user[0], username=user[1], password=user[2])
+                user_obj = User(id=user[0], username=user[1], password=user[2], totp_secret=user[3])
+                #verify2fa(user_obj.username)
                 login_user(user_obj)
                 session['user_id'] = user[0]
                 flash('Login successful!', category='success')
-                return redirect(url_for('home'))
+                return redirect(url_for('verify2fa', username=username))
             else:
                 record_failed_attempt(username)
-                flash('Invalid username or password', category='error')
+                flash('Invalid username or password', category='danger')
                 return redirect(url_for('login'))
         else:
             record_failed_attempt(username)
-            flash('Invalid username or password', category='error')
+            flash('Invalid username or password', category='danger')
             return redirect(url_for('login'))
     else:
         return render_template('login.html')
@@ -197,10 +284,10 @@ def logout():
     if session['user_id']:
         logout_user()
         session.clear()
-        flash("You were logged out. See you soon!")
+        flash("You were logged out. See you soon!", category='success')
         return redirect(url_for('home'))
     else:
-        flash('Somwthing went wrong!', category='error')
+        flash('Somwthing went wrong!', category='danger')
 
 
 @app.route('/add_post', methods=['GET', 'POST'])
@@ -208,7 +295,7 @@ def logout():
 @login_required
 def add_post():
     if 'user_id' not in session:
-        flash('You need to be logged in to add a post.', category='error')
+        flash('You need to be logged in to add a post.', category='danger')
         return redirect(url_for('login'))
 
     if request.method == 'POST':
@@ -228,14 +315,14 @@ def add_post():
 
             except Exception as e:
                 print(f"error while adding post: {e}")
-                flash('An error occurred while adding your post. Please try again.')
+                flash('An error occurred while adding your post. Please try again.', category='danger')
         else:
-            flash('You must login to add posts')
+            flash('You must login to add posts', category='danger')
     else:
-        flash('You must login to add posts')
+        flash('You must login to add posts', category='danger')
 
     return render_template('add_post.html')
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)

@@ -9,12 +9,14 @@ def create_tables():
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
-        )
-    ''')
+           CREATE TABLE IF NOT EXISTS users (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               username TEXT NOT NULL UNIQUE,
+               password TEXT NOT NULL,
+               totp_secret TEXT NULL,
+               otp_enabled BOOLEAN NULL
+           )
+       ''')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
