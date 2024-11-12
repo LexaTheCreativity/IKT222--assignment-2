@@ -12,7 +12,8 @@ def create_tables():
            CREATE TABLE IF NOT EXISTS users (
                id INTEGER PRIMARY KEY AUTOINCREMENT,
                username TEXT NOT NULL UNIQUE,
-               password TEXT NOT NULL,
+               email TEXT NULL UNIQUE,
+               password TEXT NULL,
                totp_secret TEXT NULL,
                otp_enabled BOOLEAN NULL
            )
