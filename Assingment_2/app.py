@@ -13,8 +13,11 @@ import qrcode
 from io import BytesIO
 from base64 import b64encode
 import base64
+from dotenv import load_dotenv
+from authlib.integrations.flask_client import OAuth
 import time
 import datetime
+import requests
 
 
 app = Flask(__name__)
@@ -24,6 +27,37 @@ DATABASE = 'database.db'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+load_dotenv()
+
+# access_token_url='https://accounts.google.com/o/oauth2/token',
+# authorize_url='https://accounts.google.com/o/oauth2/auth',
+#GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+#GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+#  access_token_params=None,
+#    authorize_params=None,
+#    api_base_url='https://www.googleapis.com/oauth2/v1/',
+#    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
+#redirect_uri=GOOGLE_REDIRECT_URI,
+
+GOOGLE_REDIRECT_URI = 'http://localhost:5000/authorize'
+GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
+
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv('GOOGLE_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_CLIENT_SECRET_KEY'),
+    server_metadata_url=GOOGLE_DISCOVERY_URL,
+    client_kwargs={'scope': 'openid email profile'},
+    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
+    access_token_params=None,
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+)
+
+
 
 limiter = Limiter(
     get_remote_address,
@@ -52,7 +86,7 @@ def load_user(user_id):
 
     if user:
         # Return the user object with the retrieved data
-        return User(id=user[0], username=user[1], password=user[2], totp_secret=user[3])
+        return User(id=user[0], username=user[1], password=user[3], totp_secret=user[4])
     return None
 
 
@@ -117,8 +151,30 @@ def register():
 
 
 
-def verify_password(stored_password, provided_password):
+#def verify_password(stored_password, provided_password):
     # Check that stored_password contains a colon
+ #   if ':' not in stored_password:
+  #      raise ValueError("Stored password format is invalid, missing salt delimiter ':'.")
+
+    # Split stored_password into salt and hash
+   # salt_hex, stored_hash = stored_password.split(":")
+
+    # Convert the hex salt back to bytes
+#    salt = bytes.fromhex(salt_hex)
+
+    # Hash the provided password with the extracted salt
+#    provided_hash = hashlib.sha256(salt + provided_password.encode()).hexdigest()
+
+    # Compare the hashes
+ #   return provided_hash == stored_hash
+
+
+def verify_password(stored_password, provided_password):
+    # Check if stored_password is None
+    if stored_password is None:
+        raise ValueError("Stored password is None. This should not happen.")
+
+    # Check that stored_password contains a colon (salt delimiter)
     if ':' not in stored_password:
         raise ValueError("Stored password format is invalid, missing salt delimiter ':'.")
 
@@ -157,6 +213,48 @@ def record_failed_attempt(username):
     cursor.execute("INSERT INTO login_attempts (username) VALUES (?)", (username,))
     conn.commit()
     conn.close()
+
+
+@app.route('/google_login', methods=['GET', 'POST'])
+def google_login():
+    google = oauth.create_client('google')
+    redirect_uri = url_for('authorize', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route('/authorize', methods=['GET', 'POST'])
+def authorize():
+    try:
+        google = oauth.create_client('google')
+        token = google.authorize_access_token()
+        resp = google.get('userinfo').json()
+
+        if resp:
+            conn = connect_db()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = ?", (resp['email'],))
+            user = cursor.fetchone()
+
+            if user is None:
+                cursor.execute("INSERT INTO users (username) VALUES (?)", (resp['email'],))
+                conn.commit()
+                cursor.execute("SELECT * FROM users WHERE username = ?", (resp['email'],))
+                user = cursor.fetchone()
+                print(user)
+
+            user_obj = User(id=user[0], username=user[1], password=None, totp_secret=None)
+            login_user(user_obj)
+            session['user_id'] = user[0]
+            flash("Logged in successfully with Google!", category='success')
+            return redirect(url_for('home'))
+        else:
+            flash("Failed to authenticate with Google", category='danger')
+            return redirect(url_for('login'))
+
+    except Exception as e:
+        print(f"Error during Google authentication: {e}")
+        flash("Failed to authenticate with Google", category='danger')
+        return redirect(url_for('login'))
 
 
 @app.route('/setup2fa/<username>', methods=['GET', 'POST'])
@@ -208,7 +306,7 @@ def verify2fa(username):
                 #cursor.execute("UPDATE users SET totp_secret = ? WHERE username = ?", (username,))
                 #conn.commit()
 
-                totp_secret = user[3]
+                totp_secret = user[4]
 
                 totp = pyotp.TOTP(totp_secret)
 
@@ -249,7 +347,7 @@ def login():
 
         # Check if user exists and print the retrieved password for debugging
         if user is not None:
-            stored_password = user[2]  # Get the stored hashed password
+            stored_password = user[3]  # Get the stored hashed password
             if verify_password(stored_password, password):
                 # Clear any failed attempts upon successful login
                 conn = connect_db()
@@ -259,7 +357,7 @@ def login():
                 conn.close()
 
                 # Create a user object if the password is correct
-                user_obj = User(id=user[0], username=user[1], password=user[2], totp_secret=user[3])
+                user_obj = User(id=user[0], username=user[1], password=user[3], totp_secret=user[4])
                 #verify2fa(user_obj.username)
                 login_user(user_obj)
                 session['user_id'] = user[0]

@@ -7,6 +7,15 @@
 {% block content %}
 	<h1>Login</h1>
 
+    <form method="POST" action="{{ url_for('google_login') }}">
+        <div class="mb-3">
+            <button class="btn btn-light p-3 m-auto" id="register_btn">
+                <i class="fa-brands fa-google"></i>
+                <span> Login with Google</span>
+            </button>
+        </div>
+    </form>
+
     <form method="POST" action="{{ url_for('login') }}">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
